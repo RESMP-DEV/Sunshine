@@ -84,15 +84,7 @@ namespace platf {
         av_capture.pixelFormat = kCVPixelFormatType_32BGRA;
 
         return std::make_unique<avcodec_encode_device_t>();
-      } else if (pix_fmt == pix_fmt_e::nv12 || pix_fmt == pix_fmt_e::p010 ||
-                 pix_fmt == pix_fmt_e::nv24 || pix_fmt == pix_fmt_e::p410) {
-        // nv12 / p010 are 4:2:0 BiPlanar (8 / 10 bit); nv24 / p410 are the
-        // 4:4:4 BiPlanar equivalents required by prores_videotoolbox for
-        // ProRes 422 profiles (encoder downsamples internally) and ProRes
-        // 4444 (native). nv12_zero_device is format-agnostic at the wrap
-        // layer — it sets the capture-side CVPixelBufferType and then wraps
-        // frames for AV_PIX_FMT_VIDEOTOOLBOX, so the same device handles all
-        // four.
+      } else if (pix_fmt == pix_fmt_e::nv12 || pix_fmt == pix_fmt_e::p010) {
         auto device = std::make_unique<nv12_zero_device>();
 
         device->init((void *) av_capture, pix_fmt, setResolution, setPixelFormat);
@@ -190,8 +182,14 @@ namespace platf {
     // deprecated in macOS 13 and is hardcoded to 8-bit BGRA). Fall back to
     // the legacy AVCaptureScreenInput path on older macOS.
     if (@available(macOS 12.3, *)) {
-      BOOST_LOG(info) << "Using ScreenCaptureKit capture backend"sv;
-      display->av_capture = [[SCVideo alloc] initWithDisplay:display->display_id frameRate:config.framerate];
+      // hdrAllowed reflects the negotiated `enable_hdr` for this session
+      // (rtsp.cpp maps `x-nv-video[0].dynamicRangeMode` into config.dynamicRange).
+      // SCK uses this together with the chosen pixel format depth to decide
+      // whether to flip captureDynamicRange to HDRLocalDisplay; neither
+      // condition alone is sufficient. See sc_video.m::applyDynamicRangeForPixelFormat:.
+      const BOOL hdr_allowed = config.dynamicRange ? YES : NO;
+      BOOST_LOG(info) << "Using ScreenCaptureKit capture backend (HDR "sv << (hdr_allowed ? "allowed" : "blocked") << ")"sv;
+      display->av_capture = [[SCVideo alloc] initWithDisplay:display->display_id frameRate:config.framerate hdrAllowed:hdr_allowed];
     } else {
       BOOST_LOG(info) << "Using legacy AVCaptureScreenInput capture backend"sv;
       display->av_capture = [[AVVideo alloc] initWithDisplay:display->display_id frameRate:config.framerate];
