@@ -26,6 +26,15 @@
     frontmost), but being recognised as game-eligible means the OS keeps
     Sunshine on game-priority scheduling alongside the actual game it is
     streaming, instead of throttling it as a generic background utility.
+
+    The gamepolicyd category-string coupling is documented across several
+    sources rather than a single canonical Apple page; the most useful
+    pointers when revisiting this behaviour:
+      - Apple Developer Forums, "Activate Game Mode for my App in Sonoma?"
+        https://developer.apple.com/forums/thread/739387
+      - moonlight-stream/moonlight-qt#1297 — original empirical diagnosis
+        of gamepolicyd's category-string check by the Moonlight maintainers
+        https://github.com/moonlight-stream/moonlight-qt/issues/1297
   -->
   <key>LSApplicationCategoryType</key>
   <string>public.app-category.games</string>
